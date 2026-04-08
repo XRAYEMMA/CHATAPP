@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChatApp</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #e3eef8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .app { display: flex; height: 600px; width: 900px; max-width: 100%; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.15); background: #fff; }
+
+    /* Sidebar */
+    .sidebar { width: 300px; min-width: 300px; border-right: 1px solid #dce8f5; display: flex; flex-direction: column; }
+    .sidebar-header { padding: 14px 16px; background: #185FA5; display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-header span { font-size: 16px; font-weight: 600; color: #fff; }
+    .sidebar-search { padding: 8px 12px; border-bottom: 1px solid #dce8f5; background: #f0f6fc; }
+    .sidebar-search input { width: 100%; padding: 7px 12px; font-size: 13px; border-radius: 20px; border: 1px solid #b5d4f4; background: #fff; color: #111; outline: none; }
+    .sidebar-search input:focus { border-color: #185FA5; }
+    .contacts { flex: 1; overflow-y: auto; }
+    .contact { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #f0f6fc; transition: background 0.15s; }
+    .contact:hover, .contact.active { background: #E6F1FB; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    .contact-info { flex: 1; min-width: 0; }
+    .contact-name { font-size: 14px; font-weight: 600; color: #111; }
+    .contact-preview { font-size: 12px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .contact-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .contact-time { font-size: 11px; color: #888; }
+    .badge { background: #185FA5; color: #fff; font-size: 11px; border-radius: 10px; padding: 1px 6px; min-width: 18px; text-align: center; }
+
+    /* Chat area */
+    .chat { flex: 1; display: flex; flex-direction: column; }
+    .chat-header { padding: 10px 16px; background: #185FA5; display: flex; align-items: center; gap: 12px; }
+    .chat-header-info .name { font-size: 15px; font-weight: 600; color: #fff; }
+    .chat-header-info .status { font-size: 12px; color: #B5D4F4; }
+    .messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: #dce8f5; }
+    .msg { max-width: 70%; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+    .msg.received { background: #fff; color: #111; align-self: flex-start; border-top-left-radius: 2px; }
+    .msg.sent { background: #B5D4F4; color: #042C53; align-self: flex-end; border-top-right-radius: 2px; }
+    .msg-time { font-size: 10px; color: #888; margin-top: 3px; text-align: right; }
+    .date-divider { text-align: center; font-size: 11px; color: #555; margin: 8px 0; }
+    .date-divider span { background: #b5d4f4; color: #042C53; padding: 3px 10px; border-radius: 8px; }
+
+    /* Input */
+    .msg-input { padding: 10px 12px; border-top: 1px solid #dce8f5; display: flex; align-items: center; gap: 8px; background: #fff; }
+    .msg-input input { flex: 1; padding: 8px 14px; border-radius: 20px; border: 1px solid #b5d4f4; background: #f0f6fc; color: #111; font-size: 13px; outline: none; }
+    .msg-input input:focus { border-color: #185FA5; }
+    .send-btn { width: 38px; height: 38px; border-radius: 50%; background: #185FA5; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
+    .send-btn:hover { background: #0C447C; }
+    .send-btn svg { width: 16px; height: 16px; fill: #fff; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #b5d4f4; border-radius: 10px; }
+
+    @media (max-width: 600px) {
+      .app { flex-direction: column; height: 100vh; border-radius: 0; }
+      .sidebar { width: 100%; min-width: unset; height: 220px; border-right: none; border-bottom: 1px solid #dce8f5; }
+      .contacts { max-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>ChatApp</span>
+      <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" placeholder="Search or start a new chat" id="search-input" oninput="filterContacts(this.value)">
+    </div>
+    <div class="contacts" id="contacts-list"></div>
+  </div>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="avatar" id="header-avatar" style="background:#85B7EB;color:#042C53;font-size:13px;">AJ</div>
+      <div class="chat-header-info">
+        <div class="name" id="header-name">Amira Johnson</div>
+        <div class="status" id="header-status">online</div>
+      </div>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="msg-input">
+      <input type="text" id="msg-input" placeholder="Type a message" onkeydown="if(event.key==='Enter') sendMessage()">
+      <button class="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const contacts = [
+    { id: 1, name: 'Amira Johnson', initials: 'AJ', color: '#85B7EB', textColor: '#042C53', preview: 'Are you coming tomorrow?', time: '10:32', badge: 2, status: 'online' },
+    { id: 2, name: 'Kwame Osei', initials: 'KO', color: '#378ADD', textColor: '#fff', preview: 'Thanks for the update!', time: '09:15', badge: 0, status: 'last seen today at 9:15' },
+    { id: 3, name: 'Fatima Al-Rashid', initials: 'FA', color: '#B5D4F4', textColor: '#0C447C', preview: 'I sent you the files', time: 'Yesterday', badge: 5, status: 'online' },
+    { id: 4, name: 'Dev Team', initials: 'DT', color: '#0C447C', textColor: '#E6F1FB', preview: 'New build is live!', time: 'Yesterday', badge: 0, status: '4 members' },
+    { id: 5, name: 'Luca Moretti', initials: 'LM', color: '#185FA5', textColor: '#E6F1FB', preview: 'Call me when you can', time: 'Monday', badge: 0, status: 'last seen Monday' },
+  ];
+
+  const conversations = {
+    1: [
+      { text: 'Hey! How are you?', sent: false, time: '10:28' },
+      { text: "I'm good, thanks! How about you?", sent: true, time: '10:29' },
+      { text: 'Doing great! Are you coming tomorrow?', sent: false, time: '10:32' },
+    ],
+    2: [
+      { text: 'Here is the project update you requested.', sent: true, time: '09:10' },
+      { text: 'Thanks for the update!', sent: false, time: '09:15' },
+    ],
+    3: [
+      { text: 'Can you send me those files?', sent: true, time: 'Yesterday 14:20' },
+      { text: 'Sure, one moment.', sent: false, time: 'Yesterday 14:22' },
+      { text: 'I sent you the files', sent: false, time: 'Yesterday 14:23' },
+    ],
+    4: [
+      { text: 'Deploy is done everyone', sent: false, time: 'Yesterday 18:00' },
+      { text: 'New build is live!', sent: false, time: 'Yesterday 18:05' },
+    ],
+    5: [
+      { text: 'Call me when you can', sent: false, time: 'Monday 11:00' },
+    ],
+  };
+
+  let activeId = 1;
+
+  function renderContacts(list) {
+    const el = document.getElementById('contacts-list');
+    el.innerHTML = list.map(c => `
+      <div class="contact ${c.id === activeId ? 'active' : ''}" onclick="selectContact(${c.id})">
+        <div class="avatar" style="background:${c.color};color:${c.textColor}">${c.initials}</div>
+        <div class="contact-info">
+          <div class="contact-name">${c.name}</div>
+          <div class="contact-preview">${c.preview}</div>
+        </div>
+        <div class="contact-meta">
+          <div class="contact-time">${c.time}</div>
+          ${c.badge ? `<div class="badge">${c.badge}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderMessages(id) {
+    const msgs = conversations[id] || [];
+    const el = document.getElementById('messages');
+    el.innerHTML = '<div class="date-divider"><span>Today</span></div>' +
+      msgs.map(m => `
+        <div class="msg ${m.sent ? 'sent' : 'received'}">
+          ${m.text}
+          <div class="msg-time">${m.time}</div>
+        </div>
+      `).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function selectContact(id) {
+    activeId = id;
+    const c = contacts.find(x => x.id === id);
+    document.getElementById('header-name').textContent = c.name;
+    document.getElementById('header-status').textContent = c.status;
+    document.getElementById('header-avatar').textContent = c.initials;
+    document.getElementById('header-avatar').style.background = c.color;
+    document.getElementById('header-avatar').style.color = c.textColor;
+    c.badge = 0;
+    renderContacts(contacts);
+    renderMessages(id);
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const now = new Date();
+    const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    if (!conversations[activeId]) conversations[activeId] = [];
+    conversations[activeId].push({ text, sent: true, time });
+    const c = contacts.find(x => x.id === activeId);
+    c.preview = text;
+    c.time = time;
+    input.value = '';
+    renderMessages(activeId);
+    renderContacts(contacts);
+    setTimeout(() => autoReply(activeId), 1200);
+  }
+
+  const replies = ['Got it!', 'Sure thing!', 'Thanks!', "I'll check and get back to you.", 'Sounds good!', 'On it!'];
+
+  function autoReply(id) {
+    const now = new Date();
+    const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    const text = replies[Math.floor(Math.random() * replies.length)];
+    conversations[id].push({ text, sent: false, time });
+    renderMessages(id);
+  }
+
+  function filterContacts(q) {
+    const filtered = contacts.filter(c => c.name.toLowerCase().includes(q.toLowerCase()));
+    renderContacts(filtered);
+  }
+
+  renderContacts(contacts);
+  renderMessages(1);
+</script>
+</body>
+</html>
